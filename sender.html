@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SchooMy Firebase Sender</title>
+
+<!-- Firebase SDK (compat版 v9.23.0) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans JP',sans-serif;background:#FAF8F3;color:#2D3A3A;padding:24px;max-width:600px;margin:0 auto}
+h1{font-size:18px;font-weight:700;margin-bottom:4px}
+h1 span{color:#E88A0A}
+.sub{font-size:12px;color:#6B8180;margin-bottom:20px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border:none;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;color:#fff;transition:all .15s}
+.btn-connect{background:#3AABA8}
+.btn-connect:hover{background:#2e918e}
+.btn-connect:disabled{opacity:.4;cursor:not-allowed}
+.btn-disconnect{background:#e74c3c}
+.btn-disconnect:hover{background:#c0392b}
+.status{margin:16px 0;padding:12px 16px;border-radius:8px;font-size:13px;font-weight:700}
+.status.waiting{background:rgba(107,129,128,.1);color:#6B8180}
+.status.connected{background:rgba(58,171,168,.1);color:#3AABA8}
+.status.error{background:rgba(231,76,60,.1);color:#e74c3c}
+.current{font-size:48px;font-weight:900;color:#E88A0A;margin:8px 0}
+.current .unit{font-size:16px;color:#6B8180;font-weight:400}
+.log-area{margin-top:16px}
+.log-area h2{font-size:12px;font-weight:700;color:#6B8180;margin-bottom:6px}
+.log{background:#fff;border:1px solid rgba(58,171,168,.18);border-radius:8px;padding:12px;font-size:11px;font-family:monospace;max-height:240px;overflow-y:auto;color:#6B8180;white-space:pre-wrap;word-break:break-all}
+.back{display:inline-block;margin-top:16px;font-size:12px;color:#3AABA8}
+</style>
+</head>
+<body>
+
+<h1>📤 <span>Sender</span> — センサー値送信</h1>
+<p class="sub">オレンジボードのセンサー値をFirebaseに送信します</p>
+
+<button class="btn btn-connect" id="connectBtn">🔌 接続</button>
+<button class="btn btn-disconnect" id="disconnectBtn" style="display:none">切断</button>
+
+<div class="status waiting" id="statusBox">待機中 — オレンジボードを接続してボタンを押してください</div>
+
+<div class="current" id="currentVal">--<span class="unit"> raw</span></div>
+
+<div class="log-area">
+  <h2>ログ</h2>
+  <div class="log" id="log"></div>
+</div>
+
+<a href="index.html" class="back">← スターターキットに戻る</a>
+
+<script>
+// ================================================================
+// ★ ここを書き換えてください（1/2）: Firebase の設定
+// Firebase コンソール → プロジェクト設定 → マイアプリ → 構成 からコピー
+// ================================================================
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "0:000000000000:web:000000000000"
+};
+
+// ================================================================
+// ★ ここを書き換えてください（2/2）: データの書き込み先パス
+// receiver.html 側も同じパスにしてください
+// ================================================================
+const DATA_PATH = "sensor/latest";
+
+// ---- 以下は書き換え不要 ----
+
+// Firebase 初期化
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const dataRef = db.ref(DATA_PATH);
+
+// DOM要素
+const connectBtn = document.getElementById('connectBtn');
+const disconnectBtn = document.getElementById('disconnectBtn');
+const statusBox = document.getElementById('statusBox');
+const currentVal = document.getElementById('currentVal');
+const logEl = document.getElementById('log');
+
+let port = null;
+let reader = null;
+let keepReading = true;
+
+// ログ追記（最新が上）
+function addLog(msg) {
+  const time = new Date().toLocaleTimeString('ja-JP');
+  logEl.textContent = `[${time}] ${msg}\n` + logEl.textContent;
+  // ログが長くなりすぎないように制限
+  if (logEl.textContent.length > 5000) {
+    logEl.textContent = logEl.textContent.substring(0, 5000);
+  }
+}
+
+// ステータス表示を更新
+function setStatus(text, type) {
+  statusBox.textContent = text;
+  statusBox.className = 'status ' + type;
+}
+
+// 接続ボタン
+connectBtn.addEventListener('click', async () => {
+  try {
+    // Web Serial API でポートを選択
+    port = await navigator.serial.requestPort();
+    // 9600bps で接続（オレンジボードのデフォルト）
+    await port.open({ baudRate: 9600 });
+
+    setStatus('接続中 — データを受信しています', 'connected');
+    addLog('シリアルポート接続成功');
+    connectBtn.style.display = 'none';
+    disconnectBtn.style.display = '';
+
+    // テキストストリームで読み取り
+    const decoder = new TextDecoderStream();
+    port.readable.pipeTo(decoder.writable);
+    reader = decoder.readable.getReader();
+    keepReading = true;
+
+    let buffer = '';
+
+    // 読み取りループ
+    while (keepReading) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += value;
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // 最後の不完全な行をバッファに残す
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        const num = parseInt(trimmed, 10);
+
+        if (!isNaN(num)) {
+          // 画面に表示
+          currentVal.innerHTML = num + '<span class="unit"> raw</span>';
+
+          // Firebase に書き込み
+          const data = {
+            value: num,
+            timestamp: Date.now()
+          };
+          dataRef.set(data);
+
+          addLog(`送信: ${num} raw → ${DATA_PATH}`);
+        }
+      }
+    }
+  } catch (e) {
+    setStatus('エラー: ' + e.message, 'error');
+    addLog('エラー: ' + e.message);
+  }
+});
+
+// 切断ボタン
+disconnectBtn.addEventListener('click', async () => {
+  try {
+    keepReading = false;
+    if (reader) { await reader.cancel(); reader = null; }
+    if (port) { await port.close(); port = null; }
+    setStatus('切断しました', 'waiting');
+    addLog('シリアルポート切断');
+    disconnectBtn.style.display = 'none';
+    connectBtn.style.display = '';
+    currentVal.innerHTML = '--<span class="unit"> raw</span>';
+  } catch (e) {
+    addLog('切断エラー: ' + e.message);
+  }
+});
+</script>
+
+</body>
+</html>
