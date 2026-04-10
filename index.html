@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SchooMy オレンジボード × Firebase スターターキット</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--teal:#3AABA8;--teal-dark:#2e918e;--orange:#E88A0A;--cream:#F5E4C4;--blue:#2E8EC4;--bg:#FAF8F3;--card:#fff;--border:rgba(58,171,168,.18);--text:#2D3A3A;--muted:#6B8180;--shadow:0 2px 12px rgba(0,0,0,.06)}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);line-height:1.7}
+a{color:var(--teal);text-decoration:none}
+
+/* Header */
+header{background:#fff;border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.logo{background:var(--teal);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:4px;letter-spacing:.04em}
+header h1{font-size:16px;font-weight:700}
+header h1 span{color:var(--teal)}
+
+/* Container */
+.container{max-width:860px;margin:0 auto;padding:32px 16px 60px}
+
+/* Hero */
+.hero{text-align:center;padding:40px 16px 32px}
+.hero h2{font-size:26px;font-weight:900;margin-bottom:8px}
+.hero h2 .accent{color:var(--orange)}
+.hero p{font-size:14px;color:var(--muted);max-width:520px;margin:0 auto}
+
+/* Section */
+.section{margin-bottom:40px}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-label .dot{width:8px;height:8px;border-radius:50%;background:var(--teal)}
+
+/* Diagram */
+.diagram{display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;padding:24px 0}
+.diagram-node{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:20px 24px;text-align:center;min-width:140px;box-shadow:var(--shadow)}
+.diagram-node .node-icon{font-size:32px;margin-bottom:6px}
+.diagram-node .node-title{font-size:13px;font-weight:700}
+.diagram-node .node-sub{font-size:10px;color:var(--muted)}
+.diagram-node.orange-board{border-color:var(--orange)}
+.diagram-node.chrome{border-color:var(--blue)}
+.diagram-node.firebase{border-color:var(--orange)}
+.diagram-node.app{border-color:var(--teal)}
+.diagram-arrow{font-size:24px;color:var(--muted);padding:0 12px;flex-shrink:0}
+
+/* Step cards */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.step-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.step-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--teal)}
+.step-card.s2::before{background:var(--orange)}
+.step-card.s3::before{background:var(--blue)}
+.step-card.s4::before{background:var(--teal)}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--teal);color:#fff;font-size:13px;font-weight:900;margin-bottom:8px}
+.step-card.s2 .step-num{background:var(--orange)}
+.step-card.s3 .step-num{background:var(--blue)}
+.step-title{font-size:13px;font-weight:700;margin-bottom:4px}
+.step-desc{font-size:11px;color:var(--muted);line-height:1.6}
+
+/* Download */
+.dl-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.dl-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;text-align:center;box-shadow:var(--shadow)}
+.dl-card .dl-icon{font-size:32px;margin-bottom:8px}
+.dl-card h3{font-size:14px;font-weight:700;margin-bottom:4px}
+.dl-card p{font-size:11px;color:var(--muted);margin-bottom:14px}
+.dl-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 24px;border-radius:8px;font-size:12px;font-weight:700;color:#fff;transition:all .15s;text-decoration:none}
+.dl-btn.sender{background:var(--orange)}
+.dl-btn.sender:hover{background:#d07a08}
+.dl-btn.receiver{background:var(--teal)}
+.dl-btn.receiver:hover{background:var(--teal-dark)}
+
+/* Notes */
+.notes{background:var(--cream);border-radius:12px;padding:20px 24px}
+.notes h3{font-size:13px;font-weight:700;margin-bottom:8px}
+.notes ul{padding-left:18px;font-size:12px;color:var(--text)}
+.notes li{margin-bottom:4px}
+.notes li strong{color:var(--orange)}
+
+/* Footer */
+footer{text-align:center;padding:24px 16px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);background:#fff}
+footer a{color:var(--teal)}
+
+/* Responsive */
+@media(max-width:600px){
+  .diagram{flex-direction:column;gap:4px}
+  .diagram-arrow{transform:rotate(90deg);padding:4px 0}
+  .dl-grid{grid-template-columns:1fr}
+  .hero h2{font-size:20px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">SchooMy</span>
+  <h1>オレンジボード × <span>Firebase</span> スターターキット</h1>
+</header>
+
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h2>センサーデータを<span class="accent">クラウド</span>へ</h2>
+    <p>SchooMyオレンジボードで取得したセンサー値を、Firebase Realtime Databaseに送信・受信するサンプルコード集です。書き換えは2箇所だけ。</p>
+  </div>
+
+  <!-- 全体像 -->
+  <div class="section">
+    <div class="section-label"><span class="dot"></span>全体像</div>
+    <div class="diagram">
+      <div class="diagram-node orange-board">
+        <div class="node-icon">🟠</div>
+        <div class="node-title">オレンジボード</div>
+        <div class="node-sub">光センサー等</div>
+      </div>
+      <div class="diagram-arrow">→</div>
+      <div class="diagram-node chrome">
+        <div class="node-icon">🌐</div>
+        <div class="node-title">Chrome</div>
+        <div class="node-sub">Web Serial API</div>
+      </div>
+      <div class="diagram-arrow">→</div>
+      <div class="diagram-node firebase">
+        <div class="node-icon">🔥</div>
+        <div class="node-title">Firebase</div>
+        <div class="node-sub">Realtime Database</div>
+      </div>
+      <div class="diagram-arrow">→</div>
+      <div class="diagram-node app">
+        <div class="node-icon">📊</div>
+        <div class="node-title">あなたのアプリ</div>
+        <div class="node-sub">グラフ・ランキング等</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 使い方の流れ -->
+  <div class="section">
+    <div class="section-label"><span class="dot"></span>使い方の流れ</div>
+    <div class="steps">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <div class="step-title">Firebase プロジェクトを作成</div>
+        <div class="step-desc">Firebase コンソールでプロジェクトを作り、Realtime Database を有効化します。</div>
+      </div>
+      <div class="step-card s2">
+        <div class="step-num">2</div>
+        <div class="step-title">firebaseConfig を書き換え</div>
+        <div class="step-desc">sender.html と receiver.html の <code>firebaseConfig</code> に、自分のプロジェクトの設定値を貼り付けます。</div>
+      </div>
+      <div class="step-card s3">
+        <div class="step-num">3</div>
+        <div class="step-title">sender.html を開いて接続</div>
+        <div class="step-desc">Chromeで開き、オレンジボードをUSB接続して「接続」ボタンを押します。</div>
+      </div>
+      <div class="step-card s4">
+        <div class="step-num">4</div>
+        <div class="step-title">receiver.html でリアルタイム受信</div>
+        <div class="step-desc">別のPCやタブで開くと、センサー値がリアルタイムに表示されます。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ダウンロード -->
+  <div class="section">
+    <div class="section-label"><span class="dot"></span>サンプルコード</div>
+    <div class="dl-grid">
+      <div class="dl-card">
+        <div class="dl-icon">📤</div>
+        <h3>sender.html</h3>
+        <p>オレンジボードのセンサー値を<br>Firebaseに送信するページ</p>
+        <a href="sender.html" class="dl-btn sender">送信サンプルを開く</a>
+      </div>
+      <div class="dl-card">
+        <div class="dl-icon">📥</div>
+        <h3>receiver.html</h3>
+        <p>Firebaseからセンサー値を<br>リアルタイム受信するページ</p>
+        <a href="receiver.html" class="dl-btn receiver">受信サンプルを開く</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 注意事項 -->
+  <div class="section">
+    <div class="notes">
+      <h3>⚠️ 注意事項</h3>
+      <ul>
+        <li><strong>Chrome 限定:</strong> Web Serial API は Google Chrome（デスクトップ版）でのみ動作します。Safari・Firefox・スマートフォンでは使えません。</li>
+        <li><strong>HTTPS 必須:</strong> Web Serial API は HTTPS または localhost でのみ使用できます。GitHub Pages なら自動で HTTPS になります。</li>
+        <li><strong>Firebase 30日ルール:</strong> Spark（無料）プランの Realtime Database は30日間アクセスがないと自動停止されます。</li>
+        <li><strong>セキュリティルール:</strong> テスト時は読み書き許可でOKですが、公開時は必ず認証ルールを設定してください。</li>
+        <li><strong>ボーレート:</strong> オレンジボードのデフォルトは 9600bps です。Arduino IDE 側の設定と合わせてください。</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  SchooMy Firebase Starter Kit — お問い合わせ: <a href="mailto:contact.schoomy@gmail.com">contact.schoomy@gmail.com</a>
+</footer>
+
+</body>
+</html>
