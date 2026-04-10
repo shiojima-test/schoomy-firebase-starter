@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SchooMy Firebase Receiver</title>
+
+<!-- Firebase SDK (compat版 v9.23.0) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans JP',sans-serif;background:#FAF8F3;color:#2D3A3A;padding:24px;max-width:600px;margin:0 auto}
+h1{font-size:18px;font-weight:700;margin-bottom:4px}
+h1 span{color:#3AABA8}
+.sub{font-size:12px;color:#6B8180;margin-bottom:20px}
+.status{margin-bottom:16px;padding:12px 16px;border-radius:8px;font-size:13px;font-weight:700}
+.status.waiting{background:rgba(107,129,128,.1);color:#6B8180}
+.status.live{background:rgba(58,171,168,.1);color:#3AABA8}
+.data-card{background:#fff;border:1px solid rgba(58,171,168,.18);border-radius:14px;padding:24px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:16px}
+.data-label{font-size:11px;color:#6B8180;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.data-value{font-size:56px;font-weight:900;color:#E88A0A;line-height:1}
+.data-unit{font-size:18px;color:#6B8180;font-weight:400}
+.data-time{font-size:12px;color:#6B8180;margin-top:8px}
+.data-path{font-size:10px;color:#6B8180;font-family:monospace;margin-top:4px}
+.history{margin-top:16px}
+.history h2{font-size:12px;font-weight:700;color:#6B8180;margin-bottom:6px}
+.history-list{background:#fff;border:1px solid rgba(58,171,168,.18);border-radius:8px;padding:12px;font-size:11px;font-family:monospace;max-height:200px;overflow-y:auto;color:#6B8180}
+.back{display:inline-block;margin-top:16px;font-size:12px;color:#3AABA8}
+</style>
+</head>
+<body>
+
+<h1>📥 <span>Receiver</span> — センサー値受信</h1>
+<p class="sub">Firebaseからセンサー値をリアルタイムで受信します</p>
+
+<div class="status waiting" id="statusBox">接続中...</div>
+
+<div class="data-card">
+  <div class="data-label">現在のセンサー値</div>
+  <div class="data-value" id="dataValue">--</div>
+  <div class="data-unit">raw</div>
+  <div class="data-time" id="dataTime">最終更新: --</div>
+  <div class="data-path" id="dataPath"></div>
+</div>
+
+<div class="history">
+  <h2>受信ログ</h2>
+  <div class="history-list" id="historyList">データ待ち...</div>
+</div>
+
+<a href="index.html" class="back">← スターターキットに戻る</a>
+
+<script>
+// ================================================================
+// ★ ここを書き換えてください（1/2）: Firebase の設定
+// sender.html と同じ値を貼り付けてください
+// ================================================================
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "0:000000000000:web:000000000000"
+};
+
+// ================================================================
+// ★ ここを書き換えてください（2/2）: データの読み取り先パス
+// sender.html の DATA_PATH と同じ値にしてください
+// ================================================================
+const DATA_PATH = "sensor/latest";
+
+// ---- 以下は書き換え不要 ----
+
+// Firebase 初期化
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const dataRef = db.ref(DATA_PATH);
+
+// DOM要素
+const statusBox = document.getElementById('statusBox');
+const dataValue = document.getElementById('dataValue');
+const dataTime = document.getElementById('dataTime');
+const dataPathEl = document.getElementById('dataPath');
+const historyList = document.getElementById('historyList');
+
+// 読み取りパスを画面に表示
+dataPathEl.textContent = 'パス: ' + DATA_PATH;
+
+let firstReceive = true;
+let logText = '';
+
+// ================================================================
+// リアルタイムリスナー
+// db.ref(DATA_PATH).on("value", ...) で値が変わるたびに呼ばれます
+// ================================================================
+dataRef.on("value", (snapshot) => {
+  const data = snapshot.val();
+
+  if (!data) {
+    statusBox.textContent = 'データなし — sender.html からデータを送信してください';
+    statusBox.className = 'status waiting';
+    return;
+  }
+
+  // ---- data.value と data.timestamp を使う ----
+  const value = data.value;
+  const timestamp = data.timestamp;
+  const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString('ja-JP') : '--';
+
+  // 画面に表示
+  dataValue.textContent = value;
+  dataTime.textContent = '最終更新: ' + timeStr;
+
+  // ステータスを「受信中」に
+  if (firstReceive) {
+    statusBox.textContent = '🟢 リアルタイム受信中';
+    statusBox.className = 'status live';
+    historyList.textContent = '';
+    firstReceive = false;
+  }
+
+  // 受信ログ追記（最新が上）
+  const logLine = `[${timeStr}] ${value} raw\n`;
+  logText = logLine + logText;
+  if (logText.length > 3000) logText = logText.substring(0, 3000);
+  historyList.textContent = logText;
+
+  // ================================================================
+  // 🔧 応用ポイント:
+  //
+  // ここで受信した data.value を使って、自由に拡張できます。例えば:
+  //
+  // 1. グラフ表示:
+  //    Chart.js などで data.value の時系列グラフを描画
+  //
+  // 2. ランキング:
+  //    複数デバイスのデータを比較してランキング表示
+  //    （DATA_PATH をデバイスごとに分ける: "sensor/device1", "sensor/device2"）
+  //
+  // 3. 閾値アラート:
+  //    if (data.value > 2000) { alert('明るすぎます！'); }
+  //
+  // 4. CSV記録:
+  //    受信データを配列に蓄積して、CSVファイルとしてダウンロード
+  //
+  // 5. 他のAPIに転送:
+  //    LINE Notify、Slack Webhook、Google Sheets API 等に連携
+  //
+  // ================================================================
+});
+
+// 接続エラーのハンドリング
+dataRef.on("cancel", (error) => {
+  statusBox.textContent = 'エラー: ' + error.message;
+  statusBox.className = 'status waiting';
+});
+</script>
+
+</body>
+</html>
